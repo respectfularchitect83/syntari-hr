@@ -1,12 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import type { Metadata } from "next"
 
-export const metadata: Metadata = {
-  title: "Syntari HR - Welcome",
-  description: "Welcome to Syntari HR. Sign up or log in to your company HR portal.",
-}
 
 export default function Home() {
   return (
