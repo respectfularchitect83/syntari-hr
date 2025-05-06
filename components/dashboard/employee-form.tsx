@@ -14,8 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { saveEmployee } from "@/actions/employee-actions"
-import type { Employee } from "./dashboard-page"
 import { AutoAddress } from "@/components/ui/auto-address"
 import { formatPhoneWithCountryCode } from "@/utils/country-utils"
 
@@ -192,24 +190,28 @@ export function EmployeeForm({ employee, onClose, onSuccess }: EmployeeFormProps
       const photoUrl = photoPreview || `/placeholder.svg?height=200&width=200&query=person`
 
       // Prepare the employee data
-      const employeeData: Employee = {
+      const employeeData: any = {
         ...formData,
-        name: `${formData.firstName} ${formData.lastName}`.trim(),
         photo: photoUrl,
       }
 
-      // Call the server action to save the employee
-      await saveEmployee(employeeData, isEditMode)
-
-      // Refresh the page data
-      router.refresh()
-
-      // Notify parent component of success
-      if (onSuccess) {
-        onSuccess(employeeData)
+      let res
+      if (isEditMode) {
+        res = await fetch("/api/employees", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(employeeData),
+        })
+      } else {
+        res = await fetch("/api/employees", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(employeeData),
+        })
       }
-
-      // Close the form
+      if (!res.ok) throw new Error("Failed to save employee")
+      const saved = await res.json()
+      if (onSuccess) onSuccess(saved)
       onClose()
     } catch (error) {
       console.error("Error saving employee:", error)

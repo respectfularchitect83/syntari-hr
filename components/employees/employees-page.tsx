@@ -25,22 +25,22 @@ export default function EmployeesPage() {
   const [banner, setBanner] = useState<{ type: "error" | "success", message: string } | null>(null)
   const bannerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    async function fetchEmployees() {
-      setLoading(true)
-      setError("")
-      try {
-        const res = await fetch("/api/employees")
-        if (!res.ok) throw new Error("Failed to fetch employees")
-        setEmployees(await res.json())
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch employees")
-      } finally {
-        setLoading(false)
-      }
+  // Move fetchEmployees to top-level so it can be called from handlers
+  async function fetchEmployees() {
+    setLoading(true)
+    setError("")
+    try {
+      const res = await fetch("/api/employees")
+      if (!res.ok) throw new Error("Failed to fetch employees")
+      setEmployees(await res.json())
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch employees")
+    } finally {
+      setLoading(false)
     }
-    fetchEmployees()
-  }, [])
+  }
+
+  useEffect(() => { fetchEmployees() }, [])
 
   // Get unique departments for filter
   const departments = Array.from(new Set(employees.map((emp) => emp.department)))
@@ -98,6 +98,31 @@ export default function EmployeesPage() {
 
     return true
   })
+
+  // Add handler for delete
+  async function handleDeleteEmployee(id: string) {
+    try {
+      const res = await fetch("/api/employees", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      })
+      if (!res.ok) throw new Error("Failed to delete employee")
+      setBanner({ type: "success", message: "Employee deleted" })
+      fetchEmployees()
+      setShowEmployeeDetails(false)
+    } catch (err: any) {
+      setBanner({ type: "error", message: err.message || "Failed to delete employee" })
+    }
+  }
+
+  // Pass onSuccess to EmployeeForm
+  const handleFormSuccess = () => {
+    fetchEmployees()
+    setShowEmployeeForm(false)
+    setEmployeeToEdit(undefined)
+    setBanner({ type: "success", message: "Employee saved" })
+  }
 
   return (
     <DashboardLayout>
@@ -201,7 +226,7 @@ export default function EmployeesPage() {
         )}
 
         {/* Employee Form Modal */}
-        {showEmployeeForm && <EmployeeForm employee={employeeToEdit} onClose={handleCloseForm} />}
+        {showEmployeeForm && <EmployeeForm employee={employeeToEdit} onClose={handleCloseForm} onSuccess={handleFormSuccess} />}
       </div>
     </DashboardLayout>
   )
