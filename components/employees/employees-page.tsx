@@ -222,6 +222,7 @@ export default function EmployeesPage() {
             employee={selectedEmployee}
             onClose={handleCloseDetails}
             onEdit={() => handleEditEmployee(selectedEmployee)}
+            onDelete={() => handleDeleteEmployee(selectedEmployee.id)}
           />
         )}
 

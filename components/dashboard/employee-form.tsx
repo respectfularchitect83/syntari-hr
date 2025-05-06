@@ -193,7 +193,13 @@ export function EmployeeForm({ employee, onClose, onSuccess }: EmployeeFormProps
       const employeeData: any = {
         ...formData,
         photo: photoUrl,
+        // Remove name, as Employee model uses firstName/lastName
       }
+      // Remove any fields not in the Employee model
+      delete employeeData.name
+      // Convert birthday and hireDate to Date if not empty
+      if (employeeData.birthday) employeeData.birthday = new Date(employeeData.birthday)
+      if (employeeData.hireDate) employeeData.hireDate = new Date(employeeData.hireDate)
 
       let res
       if (isEditMode) {
