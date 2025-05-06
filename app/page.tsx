@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import LoginPage from "@/components/login-page"
+import { redirect } from "next/navigation"
 
 export const metadata: Metadata = {
   title: "Syntari HR - Login",
@@ -7,5 +7,6 @@ export const metadata: Metadata = {
 }
 
 export default function Home() {
-  return <LoginPage />
+  redirect("/auth/register")
+  return null
 }
