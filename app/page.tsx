@@ -17,6 +17,22 @@ export default function Home() {
           <span className="text-gray-500">Already have an account? </span>
           <Link href="/auth/signin" className="text-blue-600 hover:underline">Log in</Link>
         </div>
+        <div className="mt-8">
+          <button
+            className="text-red-600 underline text-sm"
+            onClick={() => {
+              const pw = prompt("Enter admin password:")
+              if (pw === "0811278404") {
+                window.location.href = "/admin/delete-companies"
+              } else if (pw !== null) {
+                alert("Incorrect password.")
+              }
+            }}
+            type="button"
+          >
+            Danger Zone (Admin)
+          </button>
+        </div>
       </div>
     </main>
   )
