@@ -32,7 +32,13 @@ export default function RegisterPage() {
       const data = await res.json()
       setSuccess("Registration successful! Redirecting to your company portal...")
       setTimeout(() => {
-        window.location.href = `https://${data.subdomain}.yourdomain.com/auth/signin`
+        const subdomain = data.subdomain
+        console.log("Redirecting to subdomain:", subdomain)
+        if (/^[a-z0-9-]{1,32}$/.test(subdomain)) {
+          window.location.href = `https://${subdomain}.syntarihr.com/auth/signin`
+        } else {
+          setError("Invalid subdomain returned. Please contact support.")
+        }
       }, 1800)
     } else {
       const data = await res.json()
