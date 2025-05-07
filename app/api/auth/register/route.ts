@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { Resend } from 'resend'
 
 const prisma = new PrismaClient()
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 function slugify(str: string) {
   return str
@@ -48,12 +50,34 @@ export async function POST(req: Request) {
             password: hashedPassword,
             role: 'OWNER',
             active: true,
+            emailVerified: null,
           },
         },
       },
       include: { users: true },
     })
-    return NextResponse.json({ message: 'Registration successful.', subdomain }, { status: 200 })
+    // Generate verification token
+    const token = crypto.randomUUID()
+    await prisma.verificationToken.create({
+      data: {
+        identifier: email,
+        token,
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24 hours
+      },
+    })
+    // Send verification email
+    const verifyUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/auth/verify?token=${token}`
+    await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL!,
+      to: email,
+      subject: 'Verify your email for Syntari HR',
+      html: `<p>Welcome to Syntari HR!</p>
+        <p>Your company subdomain: <b>${subdomain}.yourdomain.com</b></p>
+        <p>Please verify your email by clicking the link below:</p>
+        <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+        <p>This link will expire in 24 hours.</p>`
+    })
+    return NextResponse.json({ message: 'Registration successful. Please check your email to verify your account.', subdomain }, { status: 200 })
   } catch (error) {
     console.error('Registration error:', error)
     return NextResponse.json({ message: 'Registration failed.' }, { status: 500 })
