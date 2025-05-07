@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Mail, LogOut, Edit } from "lucide-react"
 import Image from "next/image"
+import { signOut } from "next-auth/react"
 
 interface UserProfilePopupProps {
   user: {
@@ -52,6 +53,10 @@ export function UserProfilePopup({ user, onClose }: UserProfilePopupProps) {
         <Button
           variant="ghost"
           className="w-full justify-start text-sm h-9 px-2 py-1.5 text-gray-700 hover:bg-gray-100"
+          onClick={() => {
+            signOut()
+            onClose()
+          }}
         >
           <LogOut size={16} className="mr-2 text-gray-500" />
           Sign Out
