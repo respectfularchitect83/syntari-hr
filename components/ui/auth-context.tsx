@@ -1,3 +1,5 @@
+"use client"
+
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 
@@ -21,11 +23,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (session?.user) {
+      const user = session.user as any
       setAuth({
-        userId: session.user.id,
-        orgId: session.user.organizationId,
-        role: session.user.role,
-        user: session.user,
+        userId: user.id,
+        orgId: user.organizationId,
+        role: user.role,
+        user,
       })
     }
   }, [session])
