@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -19,78 +19,38 @@ import { type User, UserRole, type UserInvite } from "@/types/user"
 import { PlusCircle, Search, Mail, MoreHorizontal, XCircle } from "lucide-react"
 import { format } from "date-fns"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/components/ui/auth-context"
 
-// Mock data for users
-const mockUsers: User[] = [
-  {
-    id: "1",
-    email: "john.doe@example.com",
-    name: "John Doe",
-    role: UserRole.OWNER,
-    active: true,
-    lastLogin: new Date(2023, 4, 15),
-    createdAt: new Date(2023, 0, 10),
-  },
-  {
-    id: "2",
-    email: "jane.smith@example.com",
-    name: "Jane Smith",
-    role: UserRole.SUPER_ADMIN,
-    active: true,
-    lastLogin: new Date(2023, 4, 14),
-    createdAt: new Date(2023, 1, 5),
-  },
-  {
-    id: "3",
-    email: "bob.johnson@example.com",
-    name: "Bob Johnson",
-    role: UserRole.HR_MANAGER,
-    active: true,
-    lastLogin: new Date(2023, 4, 10),
-    createdAt: new Date(2023, 2, 15),
-  },
-  {
-    id: "4",
-    email: "alice.williams@example.com",
-    name: "Alice Williams",
-    role: UserRole.PAYROLL_MANAGER,
-    active: false,
-    lastLogin: new Date(2023, 3, 20),
-    createdAt: new Date(2023, 2, 20),
-  },
-]
-
-// Mock data for pending invites
-const mockInvites: UserInvite[] = [
-  {
-    id: "1",
-    email: "mark.taylor@example.com",
-    role: UserRole.STANDARD,
-    invitedBy: "John Doe",
-    invitedAt: new Date(2023, 4, 10),
-    expiresAt: new Date(2023, 5, 10),
-    status: "PENDING",
-  },
-  {
-    id: "2",
-    email: "sarah.brown@example.com",
-    role: UserRole.HR_MANAGER,
-    invitedBy: "John Doe",
-    invitedAt: new Date(2023, 4, 12),
-    expiresAt: new Date(2023, 5, 12),
-    status: "PENDING",
-  },
-]
+const backendRoles = ["OWNER", "SUPER_ADMIN", "ADMIN", "HR"]
 
 export function UsersManagementForm() {
-  const [users, setUsers] = useState<User[]>(mockUsers)
-  const [invites, setInvites] = useState<UserInvite[]>(mockInvites)
+  const { orgId, userId, role: currentUserRole, user } = useAuth()
+  const [users, setUsers] = useState<User[]>([])
+  const [invites, setInvites] = useState<UserInvite[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
-  const [newInvite, setNewInvite] = useState({
-    email: "",
-    role: UserRole.STANDARD,
-  })
+  const [newInvite, setNewInvite] = useState({ email: "", role: "HR" })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    if (!orgId) return
+    setLoading(true)
+    Promise.all([
+      fetch(`/api/org/${orgId}/users`).then(r => r.json()),
+      fetch(`/api/org/${orgId}/invites`).then(r => r.json()),
+    ]).then(([users, invites]) => {
+      setUsers(users)
+      setInvites(invites)
+      setLoading(false)
+    })
+  }, [orgId])
+
+  if (currentUserRole === "HR") {
+    return <div className="text-gray-500">You do not have access to manage users.</div>
+  }
+
+  const canManage = currentUserRole === "OWNER" || currentUserRole === "SUPER_ADMIN"
 
   const filteredUsers = users.filter(
     (user) =>
@@ -98,46 +58,56 @@ export function UsersManagementForm() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleInviteUser = () => {
-    // In a real app, this would call an API to send the invite
-    const newInviteObj: UserInvite = {
-      id: `invite-${Date.now()}`,
-      email: newInvite.email,
-      role: newInvite.role,
-      invitedBy: "John Doe", // This would be the current user
-      invitedAt: new Date(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      status: "PENDING",
+  const handleInviteUser = async () => {
+    setError("")
+    try {
+      const res = await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: newInvite.email,
+          role: newInvite.role,
+          organizationId: orgId,
+          invitedBy: userId,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to send invite")
+      setInvites([...invites, { ...newInvite, id: Date.now().toString(), invitedBy: user?.name, invitedAt: new Date(), expiresAt: new Date(Date.now() + 7*24*60*60*1000), status: "PENDING" }])
+      setNewInvite({ email: "", role: "HR" })
+      setIsInviteDialogOpen(false)
+    } catch (e) {
+      setError("Failed to send invite.")
     }
-
-    setInvites([...invites, newInviteObj])
-    setNewInvite({ email: "", role: UserRole.STANDARD })
-    setIsInviteDialogOpen(false)
   }
 
-  const handleResendInvite = (inviteId: string) => {
-    // In a real app, this would call an API to resend the invite
-    alert(`Invite resent to user with ID: ${inviteId}`)
+  const handleChangeRole = async (userId: string, newRole: string) => {
+    setError("")
+    try {
+      const res = await fetch(`/api/org/${orgId}/users`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role: newRole }),
+      })
+      if (!res.ok) throw new Error("Failed to change role")
+      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u))
+    } catch (e) {
+      setError("Failed to change role.")
+    }
   }
 
-  const handleCancelInvite = (inviteId: string) => {
-    // In a real app, this would call an API to cancel the invite
-    setInvites(invites.filter((invite) => invite.id !== inviteId))
-  }
-
-  const handleDeactivateUser = (userId: string) => {
-    // In a real app, this would call an API to deactivate the user
-    setUsers(users.map((user) => (user.id === userId ? { ...user, active: false } : user)))
-  }
-
-  const handleActivateUser = (userId: string) => {
-    // In a real app, this would call an API to activate the user
-    setUsers(users.map((user) => (user.id === userId ? { ...user, active: true } : user)))
-  }
-
-  const handleChangeRole = (userId: string, newRole: UserRole) => {
-    // In a real app, this would call an API to change the user's role
-    setUsers(users.map((user) => (user.id === userId ? { ...user, role: newRole } : user)))
+  const handleRemoveUser = async (userId: string) => {
+    setError("")
+    try {
+      const res = await fetch(`/api/org/${orgId}/users`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      })
+      if (!res.ok) throw new Error("Failed to remove user")
+      setUsers(users.filter(u => u.id !== userId))
+    } catch (e) {
+      setError("Failed to remove user.")
+    }
   }
 
   const getRoleBadgeColor = (role: UserRole) => {
@@ -198,11 +168,11 @@ export function UsersManagementForm() {
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={UserRole.SUPER_ADMIN}>Super Admin</SelectItem>
-                    <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
-                    <SelectItem value={UserRole.HR_MANAGER}>HR Manager</SelectItem>
-                    <SelectItem value={UserRole.PAYROLL_MANAGER}>Payroll Manager</SelectItem>
-                    <SelectItem value={UserRole.STANDARD}>Standard User</SelectItem>
+                    {backendRoles.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {role.replace("_", " ")}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -265,7 +235,7 @@ export function UsersManagementForm() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {user.role !== UserRole.OWNER && (
+                      {canManage && user.role !== UserRole.OWNER && (
                         <>
                           <DropdownMenuItem onClick={() => handleChangeRole(user.id, UserRole.SUPER_ADMIN)}>
                             Make Super Admin
@@ -285,11 +255,11 @@ export function UsersManagementForm() {
                         </>
                       )}
                       {user.active ? (
-                        <DropdownMenuItem onClick={() => handleDeactivateUser(user.id)}>
+                        <DropdownMenuItem onClick={() => handleRemoveUser(user.id)}>
                           Deactivate User
                         </DropdownMenuItem>
                       ) : (
-                        <DropdownMenuItem onClick={() => handleActivateUser(user.id)}>Activate User</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleRemoveUser(user.id)}>Activate User</DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -330,15 +300,7 @@ export function UsersManagementForm() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleResendInvite(invite.id)}
-                          title="Resend Invitation"
-                        >
-                          <Mail size={16} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleCancelInvite(invite.id)}
+                          onClick={() => handleRemoveUser(invite.id)}
                           title="Cancel Invitation"
                         >
                           <XCircle size={16} />

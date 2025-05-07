@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -33,10 +33,30 @@ const mockCompanyData = {
   logo: "/default-organisation.png",
 }
 
-export function CompanyDetailsForm() {
-  const [companyData, setCompanyData] = useState(mockCompanyData)
+export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: string }) {
+  const [companyData, setCompanyData] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [logoPreview, setLogoPreview] = useState<string | null>(mockCompanyData.logo)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [banner, setBanner] = useState<{ type: 'success' | 'error', message: string } | null>(null)
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [initialData, setInitialData] = useState<any>(null)
+
+  // Fetch org data on mount
+  useEffect(() => {
+    async function fetchOrg() {
+      const res = await fetch(`/api/org/${orgId}/details`, {
+        headers: { 'x-user-id': userId }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setCompanyData(data)
+        setInitialData(data)
+        setLogoPreview(data.logo || null)
+      }
+    }
+    fetchOrg()
+  }, [orgId, userId])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -92,25 +112,52 @@ export function CompanyDetailsForm() {
     }
   }
 
+  // On submit, check for sensitive changes
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-
+    setBanner(null)
     try {
-      // In a real app, you would save the company data to your backend
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Success notification would go here
+      const sensitiveFields = ["name", "legalName", "taxId", "registrationNumber"]
+      const isSensitive = initialData && sensitiveFields.some(f => companyData[f] !== initialData[f])
+      let payload = { ...companyData, logo: logoPreview }
+      if (isSensitive) {
+        if (!password) {
+          setShowPassword(true)
+          setIsSubmitting(false)
+          setBanner({ type: 'error', message: 'Password required for sensitive changes.' })
+          return
+        }
+        payload.password = password
+      }
+      const res = await fetch(`/api/org/${orgId}/details`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        body: JSON.stringify(payload)
+      })
+      if (res.ok) {
+        setBanner({ type: 'success', message: 'Company details updated.' })
+        setPassword("")
+        setShowPassword(false)
+        setInitialData(companyData)
+      } else {
+        const err = await res.json()
+        setBanner({ type: 'error', message: err.error || 'Failed to update company details.' })
+      }
     } catch (error) {
-      console.error("Error saving company details:", error)
-      // Error notification would go here
+      setBanner({ type: 'error', message: 'Error saving company details.' })
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  if (!companyData) return <div>Loading...</div>
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {banner && (
+        <div className={`mb-4 px-4 py-2 rounded ${banner.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{banner.message}</div>
+      )}
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex flex-col items-center space-y-4 md:w-1/3">
           <div className="w-40 h-40 rounded-full overflow-hidden bg-gray-100 relative">
@@ -231,6 +278,13 @@ export function CompanyDetailsForm() {
           className="min-h-[100px]"
         />
       </div>
+
+      {showPassword && (
+        <div className="space-y-2">
+          <Label htmlFor="password">Password (required for sensitive changes)</Label>
+          <Input id="password" name="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+        </div>
+      )}
 
       <div className="flex justify-end">
         <Button type="submit" className="bg-[#454636] hover:bg-[#5a5b47] text-white" disabled={isSubmitting}>

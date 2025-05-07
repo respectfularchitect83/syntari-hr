@@ -21,6 +21,7 @@ model Organization {
   createdAt DateTime @default(now())
   users     User[]
   invites   Invite[]
+  employees Employee[]
 }
 
 model User {
@@ -83,4 +84,40 @@ model Invite {
   status         String   // "PENDING", "ACCEPTED", "EXPIRED"
   createdAt      DateTime @default(now())
   expiresAt      DateTime
+}
+
+model Employee {
+  id                        String   @id @default(uuid())
+  firstName                 String
+  lastName                  String
+  email                     String   @unique
+  phone                     String
+  photo                     String?
+  birthday                  DateTime?
+  idPassport                String?
+  address                   String? // Autocomplete address
+  city                      String?
+  state                     String?
+  zipCode                   String?
+  country                   String? // Only 'Namibia' or 'South Africa' allowed in UI
+  department                String
+  position                  String
+  hireDate                  DateTime
+  manager                   String?
+  status                    String   @default("Active")
+  workSchedule              String?
+  isRemote                  Boolean  @default(false)
+  notes                     String?
+  emergencyContactName      String?
+  emergencyContactRelationship String?
+  emergencyContactPhone     String?
+  bankName                  String?
+  accountNumber             String?
+  routingSwiftNumber        String?
+  socialSecurityNumber      String?
+  taxId                     String?
+  organization              Organization @relation(fields: [organizationId], references: [id])
+  organizationId            String
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 }

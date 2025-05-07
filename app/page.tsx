@@ -1,9 +1,53 @@
 "use client"
 
 import Link from "next/link"
-
+import { useEffect, useState } from "react"
 
 export default function Home() {
+  const [unlocked, setUnlocked] = useState(false)
+  const [input, setInput] = useState("")
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (localStorage.getItem("syntarihr_landing_pw") === "0811278404") {
+        setUnlocked(true)
+      }
+    }
+  }, [])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (input === "0811278404") {
+      localStorage.setItem("syntarihr_landing_pw", "0811278404")
+      setUnlocked(true)
+      setError("")
+    } else {
+      setError("Incorrect password.")
+    }
+  }
+
+  if (!unlocked) {
+    return (
+      <main className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md text-center">
+          <h1 className="text-2xl font-bold mb-4">Syntari HR</h1>
+          <p className="mb-4 text-gray-600">This page is password protected.</p>
+          <input
+            type="password"
+            className="border px-3 py-2 rounded w-full mb-2"
+            placeholder="Enter password"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            autoFocus
+          />
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-semibold">Unlock</button>
+          {error && <div className="text-red-600 mt-2 text-sm">{error}</div>}
+        </form>
+      </main>
+    )
+  }
+
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
       <div className="bg-white p-8 rounded shadow-md text-center">

@@ -35,21 +35,6 @@ export default function DashboardPage({ session }: { session: Session }) {
 
   // TODO: Fetch real employee and stats data from backend instead of using mock data.
 
-  const handleEmployeeClick = (employee: Employee) => {
-    setSelectedEmployee(employee)
-    setShowEmployeeDetails(true)
-  }
-
-  const handlePersonClick = (id: string) => {
-    const employee =
-      employees.find((emp) => emp.id === id) || employees.find((emp) => emp.name.includes(id.split(" ")[0]))
-
-    if (employee) {
-      setSelectedEmployee(employee)
-      setShowEmployeeDetails(true)
-    }
-  }
-
   const handleCloseDetails = () => {
     setShowEmployeeDetails(false)
   }
@@ -82,11 +67,6 @@ export default function DashboardPage({ session }: { session: Session }) {
     setSelectedDepartment(department)
     setShowDepartmentFilter(false)
   }
-
-  // Filter employees by department if one is selected
-  const filteredEmployees = selectedDepartment
-    ? employees.filter((emp) => emp.department === selectedDepartment)
-    : employees
 
   return (
     <DashboardLayout>

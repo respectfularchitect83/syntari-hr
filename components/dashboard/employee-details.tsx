@@ -9,9 +9,10 @@ interface EmployeeDetailsProps {
   employee: Employee
   onClose: () => void
   onEdit?: () => void
+  onDelete?: () => void
 }
 
-export function EmployeeDetails({ employee, onClose, onEdit }: EmployeeDetailsProps) {
+export function EmployeeDetails({ employee, onClose, onEdit, onDelete }: EmployeeDetailsProps) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -101,6 +102,15 @@ export function EmployeeDetails({ employee, onClose, onEdit }: EmployeeDetailsPr
             <Button variant="outline" className="flex-1 shadow-sm">
               View Documents
             </Button>
+            {onDelete && (
+              <Button
+                variant="destructive"
+                className="flex-1 shadow-sm"
+                onClick={onDelete}
+              >
+                Delete
+              </Button>
+            )}
           </div>
         </div>
       </div>
