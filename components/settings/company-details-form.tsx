@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,63 +13,63 @@ import Image from "next/image"
 const countries = ["South Africa", "Namibia"]
 import { AutoAddress } from "@/components/ui/auto-address"
 import { formatPhoneWithCountryCode } from "@/utils/country-utils"
+import { useAuth } from "@/components/ui/auth-context"
 
-// Mock company data
-const mockCompanyData = {
-  name: "Acme Corporation",
-  legalName: "Acme Corp. Ltd.",
-  taxId: "123456789",
-  registrationNumber: "REG123456",
-  address: "123 Business Avenue",
-  city: "Metropolis",
-  state: "State",
-  zipCode: "12345",
+const initialCompanyData = {
+  name: "",
+  legalName: "",
+  taxId: "",
+  registrationNumber: "",
+  address: "",
+  city: "",
+  state: "",
+  zipCode: "",
   country: "South Africa",
-  phone: "+27 123 4567",
-  email: "info@acmecorp.com",
-  website: "https://www.acmecorp.com",
-  description: "A leading provider of innovative solutions.",
-  logo: "/default-organisation.png",
+  phone: "",
+  email: "",
+  website: "",
+  description: "",
+  logo: "",
 }
 
-export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: string }) {
-  const [companyData, setCompanyData] = useState<any>(null)
+export function CompanyDetailsForm() {
+  const { orgId, userId } = useAuth()
+  const [companyData, setCompanyData] = useState<any>(initialCompanyData)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [banner, setBanner] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [initialData, setInitialData] = useState<any>(null)
+  const [initialData, setInitialData] = useState<any>(initialCompanyData)
+  const [loading, setLoading] = useState(true)
 
-  // Fetch org data on mount
   useEffect(() => {
+    if (!orgId || !userId) return
+    setLoading(true)
     async function fetchOrg() {
+      const headers: Record<string, string> = {}
+      if (userId) headers['x-user-id'] = userId
       const res = await fetch(`/api/org/${orgId}/details`, {
-        headers: { 'x-user-id': userId }
+        headers
       })
       if (res.ok) {
         const data = await res.json()
-        setCompanyData(data)
-        setInitialData(data)
+        setCompanyData({ ...initialCompanyData, ...data })
+        setInitialData({ ...initialCompanyData, ...data })
         setLogoPreview(data.logo || null)
       }
+      setLoading(false)
     }
     fetchOrg()
   }, [orgId, userId])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setCompanyData((prev) => ({ ...prev, [name]: value }))
+    setCompanyData((prev: any) => ({ ...prev, [name]: value }))
   }
 
-  const handleAddressSelect = (address: {
-    street: string
-    suburb: string
-    city: string
-    province: string
-    postalCode: string
-  }) => {
-    setCompanyData((prev) => ({
+  const handleAddressSelect = (address: { street: string; suburb: string; city: string; province: string; postalCode: string }) => {
+    setCompanyData((prev: any) => ({
       ...prev,
       address: address.street,
       city: address.city,
@@ -81,21 +80,19 @@ export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: s
 
   const handleSelectChange = (name: string, value: string) => {
     if (name === "country") {
-      // When country changes, format the phone number with the new country code
-      setCompanyData((prev) => ({
+      setCompanyData((prev: any) => ({
         ...prev,
         [name]: value,
         phone: formatPhoneWithCountryCode(prev.phone, value),
       }))
     } else {
-      setCompanyData((prev) => ({ ...prev, [name]: value }))
+      setCompanyData((prev: any) => ({ ...prev, [name]: value }))
     }
   }
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target
-    // Format phone with country code when phone is changed
-    setCompanyData((prev) => ({
+    setCompanyData((prev: any) => ({
       ...prev,
       phone: formatPhoneWithCountryCode(value, prev.country),
     }))
@@ -112,9 +109,20 @@ export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: s
     }
   }
 
-  // On submit, check for sensitive changes
+  const validateFields = () => {
+    const required = ["name", "legalName", "taxId", "address", "city", "state", "zipCode", "country", "phone", "email"]
+    for (const field of required) {
+      if (!companyData[field]) return false
+    }
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!validateFields()) {
+      setBanner({ type: 'error', message: 'Please fill in all required fields.' })
+      return
+    }
     setIsSubmitting(true)
     setBanner(null)
     try {
@@ -130,9 +138,11 @@ export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: s
         }
         payload.password = password
       }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (userId) headers['x-user-id'] = userId
       const res = await fetch(`/api/org/${orgId}/details`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        headers,
         body: JSON.stringify(payload)
       })
       if (res.ok) {
@@ -151,7 +161,7 @@ export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: s
     }
   }
 
-  if (!companyData) return <div>Loading...</div>
+  if (loading) return <div>Loading...</div>
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -184,7 +194,6 @@ export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: s
           </Button>
           <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
         </div>
-
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="name">Company Name *</Label>
@@ -192,13 +201,7 @@ export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: s
           </div>
           <div className="space-y-2">
             <Label htmlFor="legalName">Legal Name *</Label>
-            <Input
-              id="legalName"
-              name="legalName"
-              value={companyData.legalName}
-              onChange={handleInputChange}
-              required
-            />
+            <Input id="legalName" name="legalName" value={companyData.legalName} onChange={handleInputChange} required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="taxId">Tax ID *</Label>
@@ -206,16 +209,10 @@ export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: s
           </div>
           <div className="space-y-2">
             <Label htmlFor="registrationNumber">Registration Number</Label>
-            <Input
-              id="registrationNumber"
-              name="registrationNumber"
-              value={companyData.registrationNumber}
-              onChange={handleInputChange}
-            />
+            <Input id="registrationNumber" name="registrationNumber" value={companyData.registrationNumber} onChange={handleInputChange} />
           </div>
         </div>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2 md:col-span-2">
           <AutoAddress country={companyData.country} onAddressSelect={handleAddressSelect} />
@@ -252,7 +249,6 @@ export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: s
           </Select>
         </div>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="phone">Phone *</Label>
@@ -267,25 +263,16 @@ export function CompanyDetailsForm({ orgId, userId }: { orgId: string, userId: s
           <Input id="website" name="website" value={companyData.website} onChange={handleInputChange} />
         </div>
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="description">Company Description</Label>
-        <Textarea
-          id="description"
-          name="description"
-          value={companyData.description}
-          onChange={handleInputChange}
-          className="min-h-[100px]"
-        />
+        <Textarea id="description" name="description" value={companyData.description} onChange={handleInputChange} className="min-h-[100px]" />
       </div>
-
       {showPassword && (
         <div className="space-y-2">
           <Label htmlFor="password">Password (required for sensitive changes)</Label>
           <Input id="password" name="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
         </div>
       )}
-
       <div className="flex justify-end">
         <Button type="submit" className="bg-[#454636] hover:bg-[#5a5b47] text-white" disabled={isSubmitting}>
           {isSubmitting ? (
