@@ -2,25 +2,13 @@
 
 import { useState, useRef } from "react"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
-import { FlipCard } from "@/components/dashboard/flip-card"
-import { EmployeeCard } from "@/components/dashboard/employee-card"
-import { EmployeeDetails } from "@/components/dashboard/employee-details"
-import { EmployeeForm } from "@/components/dashboard/employee-form"
 import { UserProfilePopup } from "@/components/dashboard/user-profile-popup"
-import { DepartmentFilter } from "@/components/dashboard/department-filter"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Filter } from "lucide-react"
 import Image from "next/image"
 import { Session } from "next-auth"
 
 export default function DashboardPage({ session }: { session: Session }) {
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
-  const [showEmployeeDetails, setShowEmployeeDetails] = useState(false)
-  const [showEmployeeForm, setShowEmployeeForm] = useState(false)
-  const [employeeToEdit, setEmployeeToEdit] = useState<Employee | undefined>(undefined)
   const [showUserProfile, setShowUserProfile] = useState(false)
-  const [showDepartmentFilter, setShowDepartmentFilter] = useState(false)
-  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null)
   const [banner, setBanner] = useState<{ type: "error" | "success", message: string } | null>(null)
   const bannerRef = useRef<HTMLDivElement>(null)
 
@@ -33,39 +21,8 @@ export default function DashboardPage({ session }: { session: Session }) {
     organizationId: session.user.organizationId,
   }
 
-  // TODO: Fetch real employee and stats data from backend instead of using mock data.
-
-  const handleCloseDetails = () => {
-    setShowEmployeeDetails(false)
-  }
-
-  const handleAddEmployee = () => {
-    setEmployeeToEdit(undefined)
-    setShowEmployeeForm(true)
-  }
-
-  const handleEditEmployee = (employee: Employee) => {
-    setEmployeeToEdit(employee)
-    setShowEmployeeForm(true)
-    setShowEmployeeDetails(false)
-  }
-
-  const handleCloseForm = () => {
-    setShowEmployeeForm(false)
-    setEmployeeToEdit(undefined)
-  }
-
   const toggleUserProfile = () => {
     setShowUserProfile(!showUserProfile)
-  }
-
-  const toggleDepartmentFilter = () => {
-    setShowDepartmentFilter(!showDepartmentFilter)
-  }
-
-  const handleDepartmentSelect = (department: string | null) => {
-    setSelectedDepartment(department)
-    setShowDepartmentFilter(false)
   }
 
   return (
